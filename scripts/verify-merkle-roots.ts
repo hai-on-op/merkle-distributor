@@ -1,7 +1,7 @@
-import fs from "fs";
-import { BigNumber, utils } from "ethers";
-import { MerkleDistributorInfo } from "./lib/parse-balance-map";
-import { program } from "commander";
+import fs from 'fs';
+import { BigNumber, utils } from 'ethers';
+import { MerkleDistributorInfo } from './lib/parse-balance-map';
+import { program } from 'commander';
 
 const combinedHash = (first: Buffer, second: Buffer): Buffer => {
   if (!first) {
@@ -12,14 +12,26 @@ const combinedHash = (first: Buffer, second: Buffer): Buffer => {
   }
 
   return Buffer.from(
-    utils.solidityKeccak256(["bytes32", "bytes32"], [first, second].sort(Buffer.compare)).slice(2),
-    "hex"
+    utils
+      .solidityKeccak256(
+        ['bytes32', 'bytes32'],
+        [first, second].sort(Buffer.compare)
+      )
+      .slice(2),
+    'hex'
   );
 };
 
-const toNode = (index: number | BigNumber, account: string, amount: BigNumber): Buffer => {
-  const pairHex = utils.solidityKeccak256(["uint256", "address", "uint256"], [index, account, amount]);
-  return Buffer.from(pairHex.slice(2), "hex");
+const toNode = (
+  index: number | BigNumber,
+  account: string,
+  amount: BigNumber
+): Buffer => {
+  const pairHex = utils.solidityKeccak256(
+    ['uint256', 'address', 'uint256'],
+    [index, account, amount]
+  );
+  return Buffer.from(pairHex.slice(2), 'hex');
 };
 
 const verifyProof = (
@@ -48,7 +60,9 @@ const getNextLayer = (elements: Buffer[]): Buffer[] => {
   }, []);
 };
 
-const getRoot = (balances: { account: string; amount: BigNumber; index: number }[]): Buffer => {
+const getRoot = (
+  balances: { account: string; amount: BigNumber; index: number }[]
+): Buffer => {
   let nodes = balances
     .map(({ account, amount, index }) => toNode(index, account, amount))
     // sort by lexicographical order
@@ -77,49 +91,77 @@ const verifyDistribution = (json: MerkleDistributorInfo) => {
   console.log(`Check distribution with ${recipientCont} recipients`);
 
   const merkleRootHex = json.merkleRoot;
-  const merkleRoot = Buffer.from(merkleRootHex.slice(2), "hex");
+  const merkleRoot = Buffer.from(merkleRootHex.slice(2), 'hex');
 
   let balances: { index: number; account: string; amount: BigNumber }[] = [];
   let valid = true;
 
-  Object.keys(json.recipients).forEach((address) => {
+  Object.keys(json.recipients).forEach(address => {
     const recipient = json.recipients[address];
-    const proof = recipient.proof.map((p: string) => Buffer.from(p.slice(2), "hex"));
-    balances.push({ index: recipient.index, account: address, amount: BigNumber.from(recipient.amount) });
-    if (verifyProof(recipient.index, address, BigNumber.from(recipient.amount), proof, merkleRoot)) {
+    const proof = recipient.proof.map((p: string) =>
+      Buffer.from(p.slice(2), 'hex')
+    );
+    balances.push({
+      index: recipient.index,
+      account: address,
+      amount: BigNumber.from(recipient.amount)
+    });
+    if (
+      verifyProof(
+        recipient.index,
+        address,
+        BigNumber.from(recipient.amount),
+        proof,
+        merkleRoot
+      )
+    ) {
       // console.log('Verified proof for', recipient.index, address)
     } else {
-      console.log("Verification for", address, "failed");
+      console.log('Verification for', address, 'failed');
       valid = false;
     }
   });
 
   if (!valid) {
-    console.error("  Failed validation for 1 or more proofs");
+    console.error('  Failed validation for 1 or more proofs');
     process.exit(1);
   }
-  console.log("  Done!");
+  console.log('  Done!');
 
   // Root
-  const root = getRoot(balances).toString("hex");
-  console.log("Reconstructed merkle root", root);
-  console.log("Root matches the one read from the JSON?", root === merkleRootHex.slice(2));
+  const root = getRoot(balances).toString('hex');
+  console.log('Reconstructed merkle root', root);
+  console.log(
+    'Root matches the one read from the JSON?',
+    root === merkleRootHex.slice(2)
+  );
 };
 
 program
-  .version("0.0.0")
-  .requiredOption("-n, --network <mainnet|kovan>", "Network to publish the distribution")
-  .requiredOption("-i, --id <number>", "Distribution id on the contract");
+  .version('0.0.0')
+  .requiredOption('-t, --token <kite|op>', "token the distribution is for'")
+  .requiredOption(
+    '-n, --network <optimism|optimism-sepolia>',
+    'Network to publish the distribution'
+  )
+  .requiredOption('-i, --id <number>', 'Distribution id on the contract');
 
 program.parse(process.argv);
 
-const getJson = (path: string): MerkleDistributorInfo[] => JSON.parse(fs.readFileSync(path, "utf-8"));
+const getJson = (path: string): MerkleDistributorInfo[] =>
+  JSON.parse(fs.readFileSync(path, 'utf-8'));
 
-let data: MerkleDistributorInfo[] = getJson(`scripts/merkle-paths-output/${program.opts().network}.json`);
+let data: MerkleDistributorInfo[] = getJson(
+  `scripts/merkle-paths-output/${program.opts().network}/${
+    program.opts().token
+  }.json`
+);
 
 for (let i in data) {
   console.log(
-    `[CONTRACT INDEX ${Number(i) + 1}] Distro: ${data[i].description} | Root 0x${data[i].merkleRoot}`
+    `[CONTRACT INDEX ${Number(i) + 1}] Distro: ${
+      data[i].description
+    } | Root 0x${data[i].merkleRoot}`
   );
 }
 
@@ -131,15 +173,21 @@ const dist = data[distroArrayId];
 
 if (!dist) {
   console.log(`Distro ${distroContractId} doesn't exist`);
-} else if (dist.merkleRoot === "") {
+} else if (dist.merkleRoot === '') {
   console.log(`Distro ${distroContractId} is empty`);
 } else {
-  console.log(`Verifying distro ${distroContractId} out of ${data.length} on ${program.opts().network}`);
+  console.log(
+    `Verifying distro ${distroContractId} out of ${data.length} on ${
+      program.opts().network
+    }`
+  );
   console.log(`Description: ${dist.description}`);
   console.log(
-    `Amount: ${Number(BigNumber.from(dist.tokenTotal).toString()) / 1e18} | ${BigNumber.from(
+    `Amount: ${
+      Number(BigNumber.from(dist.tokenTotal).toString()) / 1e18
+    } | ${BigNumber.from(dist.tokenTotal).toString()} | ${BigNumber.from(
       dist.tokenTotal
-    ).toString()} | ${BigNumber.from(dist.tokenTotal).toHexString()}`
+    ).toHexString()}`
   );
 
   verifyDistribution(dist);

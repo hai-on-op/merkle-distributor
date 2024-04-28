@@ -1,24 +1,25 @@
-import { program } from "commander";
-import fs from "fs";
+import { program } from 'commander';
+import fs from 'fs';
 import {
   MerkleDistributorInfo,
-  parseBalanceMap,
-} from "./lib/parse-balance-map";
-import { utils } from "ethers";
+  parseBalanceMap
+} from './lib/parse-balance-map';
+import { utils } from 'ethers';
 
 program
-  .version("0.0.0")
+  .version('0.0.0')
+  // .requiredOption(
+  //   '-i, --input <path>',
+  //   "input CSV file location in the format 'Address,amount wad'"
+  // )
+  .requiredOption('-t, --token <kite|op>', "token the distribution is for'")
   .requiredOption(
-    "-i, --input <path>",
-    "input CSV file location in the format 'Address,amount wad'"
+    '-n, --network <optimism|optimism-sepolia>',
+    'Network to publish the distribution'
   )
   .requiredOption(
-    "-n, --network <mainnet|kovan>",
-    "Network to publish the distribution"
-  )
-  .requiredOption(
-    "-d, --description <text>",
-    "Short description of the distribution"
+    '-d, --description <text>',
+    'Short description of the distribution'
   );
 
 program.parse(process.argv);
@@ -26,11 +27,14 @@ program.parse(process.argv);
 // Convert CSV to JSON
 const json: { [address: string]: string } = {};
 
-fs.readFileSync(program.opts().input, "utf8")
-  .split("\n")
-  .map((x) => {
-    const kv = x.split(",");
-    if (kv[0] === "" || kv[0].slice(0, 2) !== "0x") return;
+const inputPath = `input-${program.opts().token}.csv`;
+console.log(`Reading from ${inputPath}`);
+
+fs.readFileSync(inputPath, 'utf8')
+  .split('\n')
+  .map(x => {
+    const kv = x.split(',');
+    if (kv[0] === '' || kv[0].slice(0, 2) !== '0x') return;
 
     // Convert number to wad
     json[kv[0]] = utils.parseEther(kv[1]).toString();
@@ -38,9 +42,11 @@ fs.readFileSync(program.opts().input, "utf8")
 
 const newDistribution = parseBalanceMap(json, program.opts().description);
 
-const outPath = `scripts/merkle-paths-output/${program.opts().network}.json`;
+const outPath = `scripts/merkle-paths-output/${program.opts().network}/${
+  program.opts().token
+}.json`;
 const allDistributions: MerkleDistributorInfo[] = JSON.parse(
-  fs.readFileSync(outPath, "utf8")
+  fs.readFileSync(outPath, 'utf8')
 );
 allDistributions.push(newDistribution);
 fs.writeFileSync(outPath, JSON.stringify(allDistributions, null, 4));
