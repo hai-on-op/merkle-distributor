@@ -1,10 +1,16 @@
- 
 {
-    "compilerOptions": {
-      "target": "es5",
-      "module": "commonjs",
-      "strict": true,
-      "esModuleInterop": true,
-      "resolveJsonModule": true
-    }
+  "compilerOptions": {
+    "target": "es2018",
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "strict": true
+  },
+  "ts-node": {
+    "transpileOnly": true,
+    "files": true
   }
+}

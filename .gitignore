@@ -4,3 +4,5 @@ node_modules
 notes.txt
 notes-funds.txt
 cache/
+yarn-error.log
+.yarn/
